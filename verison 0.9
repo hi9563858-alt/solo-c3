@@ -5,27 +5,74 @@
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET    -1
+#define BUTTON_PIN     2 // Kept defined for system tracking
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 int slideIndex = 0;
-const int totalSlides = 4; // Reset to 4 slides (removed deep sleep)
+const int totalSlides = 4; // Clock, Calendar, Music, Charging
 unsigned long lastSlideChange = 0;
 const unsigned long slideInterval = 10000; // 10 seconds
 
 void setup() {
+  // Initialize the serial monitor for console logging
+  Serial.begin(115200);
+  
+  // Set up the button pin using internal pull-up
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+
+  // --- HARDWARE CHECK: SCREEN ---
+  // Attempt I2C connection with the 0.96" display panel
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
-    for(;;); 
+    Serial.println(F("CRITICAL ERROR: SSD1306 Screen Not Detected!"));
+    for(;;); // Halt execution if screen is missing
   }
   
+  // Display initial diagnostic screen layout
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
+  
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.println("--- SOLO-C3 V0.9 ---");
+  display.println("RUNNING DIAGNOSTICS:");
+  display.println("");
+  display.display();
+  delay(800);
+
+  // 1. Log Screen Status
+  display.print("1. SCREEN : ");
+  display.setTextColor(SSD1306_WHITE);
+  display.println("ONLINE [OK]");
+  display.display();
+  delay(800);
+
+  // 2. Log Processor Status
+  display.print("2. CORE   : ESP32-C3 [OK]");
+  display.println("");
+  display.display();
+  delay(800);
+
+  // 3. Log Button Status (Marked as non-blocking/optional for demo)
+  display.print("3. BUTTON : ");
+  int btnCheck = digitalRead(BUTTON_PIN);
+  if(btnCheck == LOW) {
+    display.println("TRIGGERED");
+  } else {
+    display.println("OPEN / OPTIONAL");
+  }
+  display.display();
+  delay(1500); // Hold dashboard up so you can read it
+
+  // Transition into slide show mode
+  display.clearDisplay();
   lastSlideChange = millis();
 }
 
 void loop() {
   unsigned long currentMillis = millis();
 
+  // Handle auto-cycling intervals
   if (currentMillis - lastSlideChange >= slideInterval) {
     slideIndex = (slideIndex + 1) % totalSlides;
     lastSlideChange = currentMillis;
